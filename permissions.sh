@@ -1,15 +1,10 @@
 #!/bin/bash
 
-# ./update_permissions.sh /home/ubuntu/monitor
-
-# Check if directory parameter is provided
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <directory>"
-    exit 1
-fi
+# Get the directory path where the script is located
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 # Directory path
-directory="$1"
+directory="$script_dir"
 
 # Check if directory exists
 if [ -d "$directory" ]; then
