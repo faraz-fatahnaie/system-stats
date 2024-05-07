@@ -7,13 +7,10 @@ import sys
 
 # Global variables
 running = True
-last_cpu_usage = 0
-last_memory_usage = 0
-last_gpu_usage = 0
 
 
 def get_cpu_usage():
-    return psutil.cpu_percent(interval=1)
+    return psutil.cpu_percent(interval=0.1)
 
 
 def get_memory_usage():
@@ -31,23 +28,30 @@ def get_gpu_usage():
         return None
 
 
-def log_stats(cpu_usage, memory_usage, gpu_usage):
+def get_gpu_memory_usage():
+    # Use nvidia-smi command to get GPU memory usage
+    try:
+        output = subprocess.check_output(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"])
+        gpu_memory_usage = int(output.decode("utf-8").strip().split()[0])
+        return gpu_memory_usage
+    except Exception as e:
+        print("Error getting GPU memory usage:", e)
+        return None
+
+
+def log_stats(cpu_usage, memory_usage, gpu_usage, gpu_memory_usage):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     log_file = os.path.join(os.path.dirname(__file__), "system_stats.log")
     with open(log_file, "a") as f:
-        f.write(f"{timestamp}, CPU: {cpu_usage}%, Memory: {memory_usage}%, GPU: {gpu_usage}%\n")
+        f.write(
+            f"{timestamp}, CPU: {cpu_usage}%, Memory: {memory_usage}%, GPU: {gpu_usage}%, GPU Memory: {gpu_memory_usage}MB\n")
 
 
 def signal_handler(sig, frame):
     global running
-    global last_cpu_usage, last_memory_usage, last_gpu_usage
 
     print("Stopping monitoring process...")
     running = False
-
-    # Log the last update
-    log_stats(last_cpu_usage, last_memory_usage, last_gpu_usage)
-    print("Last update saved to system_stats.log")
 
 
 if __name__ == "__main__":
@@ -55,13 +59,17 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     while running:
-        # Update usage values
-        last_cpu_usage = get_cpu_usage()
-        last_memory_usage = get_memory_usage()
-        last_gpu_usage = get_gpu_usage()
+        # Get system stats
+        cpu_usage = get_cpu_usage()
+        memory_usage = get_memory_usage()
+        gpu_usage = get_gpu_usage()
+        gpu_memory_usage = get_gpu_memory_usage()
 
-        # Sleep for 60 seconds before next update
-        time.sleep(60)
+        # Log the stats
+        log_stats(cpu_usage, memory_usage, gpu_usage, gpu_memory_usage)
+
+        # Sleep for 1 second before next update
+        time.sleep(1)
 
     print("Monitoring process stopped.")
     sys.exit(0)
